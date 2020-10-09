@@ -85,7 +85,7 @@ int main()
 {
     int i;
 
-    cout << "Carregando PDF..." << endl;
+    cout << "Loading PDFs..." << endl;
     PdfMemDocument *document1 = nullptr;
 
     while (true)
@@ -93,7 +93,7 @@ int main()
         try
         {
             PdfMemDocument *document = nextPdf();
-            cout << "li mais um" << endl;
+            cout << "li + 1" << endl;
             if (!document1)
             {
                 document1 = document;
@@ -106,12 +106,13 @@ int main()
         }
         catch (PdfError &e)
         {
-            cout << e.what() << endl;
+            std::cerr << e.what() << "--\n";
             break;
         }
     }
     if (document1)
     {
+        cout << "Writing file" << endl;
         document1->Write("../../teste_final.pdf");
     }
 }
