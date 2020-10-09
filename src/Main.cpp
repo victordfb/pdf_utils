@@ -2,6 +2,7 @@
 #include <cstring>
 #include <podofo/podofo.h>
 #include <memory>
+#include <vector>
 
 using namespace PoDoFo;
 
@@ -11,6 +12,9 @@ using std::endl;
 using std::string;
 
 const std::size_t INIT_BUFFER_SIZE = 1024;
+const string startMark = "%PDF";
+const string eofMark = "%%EOF";
+std::vector<char> *remaindr;
 
 PdfMemDocument *nextPdf()
 {
@@ -28,6 +32,10 @@ PdfMemDocument *nextPdf()
 
         // somewhere to store the data
         std::vector<char> input;
+        if (remaindr)
+        {
+            input.insert(input.begin(), remaindr->begin(), remaindr->end());
+        }
 
         // use std::fread and remember to only use as many bytes as are returned
         // according to len
@@ -37,18 +45,41 @@ PdfMemDocument *nextPdf()
             if (std::ferror(stdin) && !std::feof(stdin))
                 throw std::runtime_error(std::strerror(errno));
 
-            // use {buf.data(), buf.data() + len} here
-            input.insert(input.end(), buf.data(), buf.data() + len); // append to vector
-        }
+            char *pos = strstr(buf.data(), eofMark.c_str());
+            if (pos)
+            {
+                // use {buf.data(), buf.data() + len} here
+                input.insert(input.end(), buf.data(), pos + 5); // append to vector
 
-        // use input vector here
+                char *sPos = strstr(pos, startMark.c_str());
+                if (sPos)
+                {
+                    delete remaindr;
+                    remaindr = new std::vector<char>();
+                    remaindr->assign(sPos, buf.data() + len);
+                }
+                else
+                {
+                    delete remaindr;
+                    remaindr = nullptr;
+                }
+                break;
+            }
+            else
+            {
+                // use {buf.data(), buf.data() + len} here
+                input.insert(input.end(), buf.data(), buf.data() + len); // append to vector
+            }
+        }
+        PdfMemDocument *document = new PdfMemDocument();
+        document->LoadFromBuffer(reinterpret_cast<char *>(input.data()), input.size());
+        return document;
     }
     catch (std::exception const &e)
     {
-        std::cerr << e.what() << '\n';
+        std::cerr << e.what() << "--\n";
         return nullptr;
     }
-    return nullptr;
 }
 
 int main()
@@ -56,20 +87,32 @@ int main()
     int i;
 
     cout << "Carregando PDF..." << endl;
+    PdfMemDocument *document1 = nullptr;
 
-    try
+    while (true)
     {
-        PdfMemDocument *document = nextPdf();
-        document->Write("../../teste_final.pdf");
-        //PdfMemDocument document1;
-        //PdfMemDocument document2;
-        //document1.Load(file.c_str());
-        //document2.Load(file.c_str());
-        //document1.Append(document2);
-        //document1.Write("../../teste_final.pdf");
+        try
+        {
+            PdfMemDocument *document = nextPdf();
+            cout << "li mais um" << endl;
+            if (!document1)
+            {
+                document1 = document;
+            }
+            else
+            {
+                document1->Append(*document);
+                delete document;
+            }
+        }
+        catch (PdfError &e)
+        {
+            cout << e.what() << endl;
+            break;
+        }
     }
-    catch (PdfError &e)
+    if (document1)
     {
-        cout << e.what() << endl;
+        document1->Write("../../teste_final.pdf");
     }
 }
