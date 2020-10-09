@@ -55,8 +55,7 @@ PdfMemDocument *nextPdf()
                 if (sPos)
                 {
                     delete remaindr;
-                    remaindr = new std::vector<char>();
-                    remaindr->assign(sPos, buf.data() + len);
+                    remaindr = new std::vector<char>(sPos, buf.data() + len);
                 }
                 else
                 {
